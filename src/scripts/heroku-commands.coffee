@@ -9,18 +9,11 @@
 #   HUBOT_HEROKU_API_KEY
 #
 # Commands:
-#   hubot heroku list apps <app name filter> - Lists all apps or filtered by the name
-#   hubot heroku info <app> - Returns useful information about the app
-#   hubot heroku dynos <app> - Lists all dynos and their status
 #   hubot heroku releases <app> - Latest 10 releases
-#   hubot heroku rollback <app> <version> - Rollback to a release
 #   hubot heroku restart <app> <dyno> - Restarts the specified app or dyno/s (e.g. worker or web.2)
-#   hubot heroku migrate <app> - Runs migrations. Remember to restart the app =)
 #   hubot heroku config <app> - Get config keys for the app. Values not given for security
 #   hubot heroku config:set <app> <KEY=value> - Set KEY to value. Case sensitive and overrides present key
 #   hubot heroku config:unset <app> <KEY> - Unsets KEY, does not throw error if key is not present
-#   hubot heroku run rake <app> <task> - Runs a specific rake task
-#   hubot heroku ps:scale <app> <type>=<size>(:<quantity>) - Scales dyno quantity up or down
 #
 # Author:
 #   daemonsy
@@ -28,7 +21,7 @@
 Heroku          = require('heroku-client')
 objectToMessage = require("../object-to-message")
 
-heroku = new Heroku(token: process.env.HUBOT_HEROKU_API_KEY)
+heroku = new Heroku(token: process.env.HEROKU_API_KEY)
 _      = require('lodash')
 moment = require('moment')
 useAuth = (process.env.HUBOT_HEROKU_USE_AUTH or '').trim().toLowerCase() is 'true'
@@ -52,65 +45,6 @@ module.exports = (robot) ->
     else
       robotMessage.reply successMessage
 
-  # App List
-  robot.respond /(heroku list apps)\s?(.*)/i, (msg) ->
-    return unless auth(msg)
-
-    searchName = msg.match[2] if msg.match[2].length > 0
-
-    if searchName
-      msg.reply "Listing apps matching: #{searchName}"
-    else
-      msg.reply "Listing all apps available..."
-
-    heroku.apps().list (error, list) ->
-      list = list.filter (item) -> item.name.match(new RegExp(searchName, "i"))
-
-      result = if list.length > 0 then list.map((app) -> objectToMessage(app, "appShortInfo")).join("\n\n") else "No apps found"
-
-      respondToUser(msg, error, result)
-
-  # App Info
-  robot.respond /heroku info (.*)/i, (msg) ->
-    return unless auth(msg, appName)
-
-    appName = msg.match[1]
-
-    msg.reply "Getting information about #{appName}"
-
-    heroku.apps(appName).info (error, info) ->
-      successMessage = "\n" + objectToMessage(info, "info") unless error
-      respondToUser(msg, error, successMessage)
-
-  # Dynos
-  robot.respond /heroku dynos (.*)/i, (msg) ->
-    appName = msg.match[1]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Getting dynos of #{appName}"
-
-    heroku.apps(appName).dynos().list (error, dynos) ->
-      output = []
-      if dynos
-        output.push "Dynos of #{appName}"
-        lastFormation = ""
-
-        for dyno in dynos
-          currentFormation = "#{dyno.type}.#{dyno.size}"
-
-          unless currentFormation is lastFormation
-            output.push "" if lastFormation
-            output.push "=== #{dyno.type} (#{dyno.size}): `#{dyno.command}`"
-            lastFormation = currentFormation
-
-          updatedAt = moment(dyno.updated_at)
-          updatedTime = updatedAt.utc().format('YYYY/MM/DD HH:mm:ss')
-          timeAgo = updatedAt.fromNow()
-          output.push "#{dyno.name}: #{dyno.state} #{updatedTime} (~ #{timeAgo})"
-
-      respondToUser(msg, error, output.join("\n"))
-
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->
     appName = msg.match[1]
@@ -129,26 +63,6 @@ module.exports = (robot) ->
 
       respondToUser(msg, error, output.join("\n"))
 
-  # Rollback
-  robot.respond /heroku rollback (.*) (.*)$/i, (msg) ->
-    appName = msg.match[1]
-    version = msg.match[2]
-
-    return unless auth(msg, appName)
-
-    if version.match(/v\d+$/)
-      msg.reply "Telling Heroku to rollback to #{version}"
-
-      app = heroku.apps(appName)
-      app.releases().list (error, releases) ->
-        release = _.find releases, (release) ->
-          "v#{release.version}" ==  version
-
-        return msg.reply "Version #{version} not found for #{appName} :(" unless release
-
-        app.releases().rollback release: release.id, (error, release) ->
-          respondToUser(msg, error, "Success! v#{release.version} -> Rollback to #{version}")
-
   # Restart
   robot.respond /heroku restart ([\w-]+)\s?(\w+(?:\.\d+)?)?/i, (msg) ->
     appName = msg.match[1]
@@ -165,26 +79,6 @@ module.exports = (robot) ->
     else
       heroku.apps(appName).dynos(dynoName).restart (error, app) ->
         respondToUser(msg, error, "Heroku: Restarting #{appName}#{dynoNameText}")
-
-  # Migration
-  robot.respond /heroku migrate (.*)/i, (msg) ->
-    appName = msg.match[1]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Telling Heroku to migrate #{appName}"
-
-    heroku.apps(appName).dynos().create
-      command: "rake db:migrate"
-      attach: false
-    , (error, dyno) ->
-      respondToUser(msg, error, "Heroku: Running migrations for #{appName}")
-
-      heroku.apps(appName).logSessions().create
-        dyno: dyno.name
-        tail: true
-      , (error, session) ->
-        respondToUser(msg, error, "View logs at: #{session.logplex_url}")
 
   # Config Vars
   robot.respond /heroku config (.*)$/i, (msg) ->
@@ -229,39 +123,3 @@ module.exports = (robot) ->
     heroku.apps(appName).configVars().update keyPair, (error, response) ->
       respondToUser(msg, error, "Heroku: #{key} has been unset")
 
-  # Run Rake
-  robot.respond /heroku run rake (.+) (.+)$/i, (msg) ->
-    appName = msg.match[1]
-    task = msg.match[2]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Telling Heroku to run `rake #{task}` on #{appName}"
-
-    heroku.apps(appName).dynos().create
-      command: "rake #{task}"
-      attach: false
-    , (error, dyno) ->
-      respondToUser(msg, error, "Heroku: Running `rake #{task}` for #{appName}")
-
-      heroku.apps(appName).logSessions().create
-        dyno: dyno.name
-        tail: true
-      , (error, session) ->
-        respondToUser(msg, error, "View logs at: #{session.logplex_url}")
-
-  # Formations
-  robot.respond /heroku ps:scale (.+) ([^=]+)=([^:]+):(.*)$/i, (msg) ->
-    parameters = {}
-    appName = msg.match[1]
-    type = msg.match[2]
-    parameters.quantity = msg.match[3]
-    parameters.size = msg.match[4] if msg.match.size > 4
-
-    return unless auth(msg, appName)
-
-    msg.reply "Telling Heroku to scale #{type} dynos of #{appName}"
-
-    heroku.apps(appName).formation(type).update parameters, (error, formation) ->
-      output = "Heroku: now running #{formation.type} at #{formation.quantity}:#{formation.size}"
-      respondToUser(msg, error, output)

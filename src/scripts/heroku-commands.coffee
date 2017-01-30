@@ -9,6 +9,8 @@
 #   HUBOT_HEROKU_API_KEY
 #
 # Commands:
+#   hubot heroku list apps <app name filter> - Lists all apps or filtered by the name
+#   hubot heroku dynos <app> - Lists all dynos and their status
 #   hubot heroku releases <app> - Latest 10 releases
 #   hubot heroku restart <app> <dyno> - Restarts the specified app or dyno/s (e.g. worker or web.2)
 #   hubot heroku config <app> - Get config keys for the app. Values not given for security
@@ -44,6 +46,53 @@ module.exports = (robot) ->
       robotMessage.reply "Shucks. An error occurred. #{error.statusCode} - #{error.body.message}"
     else
       robotMessage.reply successMessage
+
+  # App List
+  robot.respond /(heroku list apps)\s?(.*)/i, (msg) ->
+    return unless auth(msg)
+
+    searchName = msg.match[2] if msg.match[2].length > 0
+
+    if searchName
+      msg.reply "Listing apps matching: #{searchName}"
+    else
+      msg.reply "Listing all apps available..."
+
+    heroku.apps().list (error, list) ->
+      list = list.filter (item) -> item.name.match(new RegExp(searchName, "i"))
+
+      result = if list.length > 0 then list.map((app) -> objectToMessage(app, "appShortInfo")).join("\n\n") else "No apps found"
+
+      respondToUser(msg, error, result)
+
+  # Dynos
+  robot.respond /heroku dynos (.*)/i, (msg) ->
+    appName = msg.match[1]
+
+    return unless auth(msg, appName)
+
+    msg.reply "Getting dynos of #{appName}"
+
+    heroku.apps(appName).dynos().list (error, dynos) ->
+      output = []
+      if dynos
+        output.push "Dynos of #{appName}"
+        lastFormation = ""
+
+        for dyno in dynos
+          currentFormation = "#{dyno.type}.#{dyno.size}"
+
+          unless currentFormation is lastFormation
+            output.push "" if lastFormation
+            output.push "=== #{dyno.type} (#{dyno.size}): `#{dyno.command}`"
+            lastFormation = currentFormation
+
+          updatedAt = moment(dyno.updated_at)
+          updatedTime = updatedAt.utc().format('YYYY/MM/DD HH:mm:ss')
+          timeAgo = updatedAt.fromNow()
+          output.push "#{dyno.name}: #{dyno.state} #{updatedTime} (~ #{timeAgo})"
+
+      respondToUser(msg, error, output.join("\n"))
 
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->

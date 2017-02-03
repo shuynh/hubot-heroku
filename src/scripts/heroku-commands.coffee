@@ -65,35 +65,6 @@ module.exports = (robot) ->
 
       respondToUser(msg, error, result)
 
-  # Dynos
-  robot.respond /heroku dynos (.*)/i, (msg) ->
-    appName = msg.match[1]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Getting dynos of #{appName}"
-
-    heroku.apps(appName).dynos().list (error, dynos) ->
-      output = []
-      if dynos
-        output.push "Dynos of #{appName}"
-        lastFormation = ""
-
-        for dyno in dynos
-          currentFormation = "#{dyno.type}.#{dyno.size}"
-
-          unless currentFormation is lastFormation
-            output.push "" if lastFormation
-            output.push "=== #{dyno.type} (#{dyno.size}): `#{dyno.command}`"
-            lastFormation = currentFormation
-
-          updatedAt = moment(dyno.updated_at)
-          updatedTime = updatedAt.utc().format('YYYY/MM/DD HH:mm:ss')
-          timeAgo = updatedAt.fromNow()
-          output.push "#{dyno.name}: #{dyno.state} #{updatedTime} (~ #{timeAgo})"
-
-      respondToUser(msg, error, output.join("\n"))
-
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->
     appName = msg.match[1]
@@ -111,64 +82,4 @@ module.exports = (robot) ->
           output.push "v#{release.version} - #{release.description} - #{release.user.email} -  #{release.created_at}"
 
       respondToUser(msg, error, output.join("\n"))
-
-  # Restart
-  robot.respond /heroku restart ([\w-]+)\s?(\w+(?:\.\d+)?)?/i, (msg) ->
-    appName = msg.match[1]
-    dynoName = msg.match[2]
-    dynoNameText = if dynoName then ' '+dynoName else ''
-
-    return unless auth(msg, appName)
-
-    msg.reply "Telling Heroku to restart #{appName}#{dynoNameText}"
-
-    unless dynoName
-      heroku.apps(appName).dynos().restartAll (error, app) ->
-        respondToUser(msg, error, "Heroku: Restarting #{appName}")
-    else
-      heroku.apps(appName).dynos(dynoName).restart (error, app) ->
-        respondToUser(msg, error, "Heroku: Restarting #{appName}#{dynoNameText}")
-
-  # Config Vars
-  robot.respond /heroku config (.*)$/i, (msg) ->
-    appName = msg.match[1]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Getting config keys for #{appName}"
-
-    heroku.apps(appName).configVars().info (error, configVars) ->
-      listOfKeys = configVars && Object.keys(configVars).join(", ")
-      respondToUser(msg, error, listOfKeys)
-
-  robot.respond /heroku config:set (.*) (\w+)=('([\s\S]+)'|"([\s\S]+)"|([\s\S]+\b))/im, (msg) ->
-    keyPair = {}
-
-    appName = msg.match[1]
-    key     = msg.match[2]
-    value   = msg.match[4] || msg.match[5] || msg.match[6] # :sad_panda:
-
-    return unless auth(msg, appName)
-
-    msg.reply "Setting config #{key} => #{value}"
-
-    keyPair[key] = value
-
-    heroku.apps(appName).configVars().update keyPair, (error, configVars) ->
-      respondToUser(msg, error, "Heroku: #{key} is set to #{configVars[key]}")
-
-  robot.respond /heroku config:unset (.*) (\w+)$/i, (msg) ->
-    keyPair = {}
-    appName = msg.match[1]
-    key     = msg.match[2]
-    value   = msg.match[3]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Unsetting config #{key}"
-
-    keyPair[key] = null
-
-    heroku.apps(appName).configVars().update keyPair, (error, response) ->
-      respondToUser(msg, error, "Heroku: #{key} has been unset")
 

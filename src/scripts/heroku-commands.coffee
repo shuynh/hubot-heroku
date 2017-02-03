@@ -12,10 +12,6 @@
 #   hubot heroku list apps <app name filter> - Lists all apps or filtered by the name
 #   hubot heroku dynos <app> - Lists all dynos and their status
 #   hubot heroku releases <app> - Latest 10 releases
-#   hubot heroku restart <app> <dyno> - Restarts the specified app or dyno/s (e.g. worker or web.2)
-#   hubot heroku config <app> - Get config keys for the app. Values not given for security
-#   hubot heroku config:set <app> <KEY=value> - Set KEY to value. Case sensitive and overrides present key
-#   hubot heroku config:unset <app> <KEY> - Unsets KEY, does not throw error if key is not present
 #
 # Author:
 #   daemonsy

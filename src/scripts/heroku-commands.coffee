@@ -75,25 +75,3 @@ module.exports = (robot) ->
           output.push "v#{release.version} - #{release.description} - #{release.user.email} -  #{release.created_at}"
 
       respondToUser(msg, error, output.join("\n"))
-
-
-  # Migration
-  robot.respond /heroku migrate (.*)/i, (msg) ->
-    appName = msg.match[1]
-
-    return unless auth(msg, appName)
-
-    msg.reply "Telling Heroku to migrate #{appName}"
-
-    heroku.apps(appName).dynos().create
-      command: "rake db:migrate"
-      attach: false
-    , (error, dyno) ->
-      respondToUser(msg, error, "Heroku: Running migrations for #{appName}")
-
-      heroku.apps(appName).logSessions().create
-        dyno: dyno.name
-        tail: true
-      , (error, session) ->
-        respondToUser(msg, error, "View logs at: #{session.logplex_url}")
-

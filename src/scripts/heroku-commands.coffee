@@ -9,10 +9,7 @@
 #   HUBOT_HEROKU_API_KEY
 #
 # Commands:
-#   hubot heroku list apps <app name filter> - Lists all apps or filtered by the name
-#   hubot heroku dynos <app> - Lists all dynos and their status
-#   hubot heroku releases <app> - Latest 10 releases
-#
+
 # Author:
 #   daemonsy
 
@@ -78,4 +75,25 @@ module.exports = (robot) ->
           output.push "v#{release.version} - #{release.description} - #{release.user.email} -  #{release.created_at}"
 
       respondToUser(msg, error, output.join("\n"))
+
+
+  # Migration
+  robot.respond /heroku migrate (.*)/i, (msg) ->
+    appName = msg.match[1]
+
+    return unless auth(msg, appName)
+
+    msg.reply "Telling Heroku to migrate #{appName}"
+
+    heroku.apps(appName).dynos().create
+      command: "rake db:migrate"
+      attach: false
+    , (error, dyno) ->
+      respondToUser(msg, error, "Heroku: Running migrations for #{appName}")
+
+      heroku.apps(appName).logSessions().create
+        dyno: dyno.name
+        tail: true
+      , (error, session) ->
+        respondToUser(msg, error, "View logs at: #{session.logplex_url}")
 

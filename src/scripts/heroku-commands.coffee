@@ -9,6 +9,7 @@
 #   HUBOT_HEROKU_API_KEY
 #
 # Commands:
+#   hubot heroku migrate <app> - Runs migrations. Remember to restart the app =)
 
 # Author:
 #   daemonsy
@@ -39,6 +40,28 @@ module.exports = (robot) ->
       robotMessage.reply "Shucks. An error occurred. #{error.statusCode} - #{error.body.message}"
     else
       robotMessage.reply successMessage
+
+  # Migration
+  robot.respond /heroku migrate\s+(bedpost\-staging|bedpost\-production)$/i, (msg) ->
+    unless robot.auth.hasRole(msg.envelope.user,'admin')
+      msg.send 'Sorry! You do not have deploy permissions. Please contact ops.'
+      return
+    
+    appName = msg.match[1]
+
+    msg.reply "Running migrations on #{appName}"
+
+    heroku.apps(appName).dynos().create
+      command: "rake db:migrate"
+      attach: false
+    , (error, dyno) ->
+      respondToUser(msg, error, "Heroku: Running migrations for #{appName}")
+
+      heroku.apps(appName).logSessions().create
+        dyno: dyno.name
+        tail: true
+      , (error, session) ->
+        respondToUser(msg, error, "View logs at: #{session.logplex_url}")
 
   # App List
   robot.respond /(heroku list apps)\s?(.*)/i, (msg) ->

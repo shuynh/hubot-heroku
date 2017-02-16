@@ -9,7 +9,7 @@
 #   HUBOT_HEROKU_API_KEY
 #
 # Commands:
-#   hubot heroku migrate <app> - Runs migrations. Remember to restart the app =)
+#   hubot heroku migrate <app-name> - runs migrations 
 
 # Author:
 #   daemonsy

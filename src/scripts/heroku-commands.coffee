@@ -10,9 +10,7 @@
 #
 # Commands:
 #   hubot heroku migrate <app-name> - runs migrations 
-
-# Author:
-#   daemonsy
+#   hubot heroku rollback <app-name> to <version> - rolls back release 
 
 Heroku          = require('heroku-client')
 objectToMessage = require("../object-to-message")
@@ -51,6 +49,26 @@ module.exports = (robot) ->
         tail: true
       , (error, session) ->
         respondToUser(msg, error, "View logs at: #{session.logplex_url}")
+
+  # Rollback
+  robot.respond /heroku rollback (bedpost\-staging|bedpost\-production) to (\w+)$/i, (msg) ->
+    appName = msg.match[1]
+    version = msg.match[2]
+
+    return unless auth(msg, appName)
+
+    if version.match(/v\d+$/)
+      msg.reply "Rolling back #{appName} to #{version}"
+
+      app = heroku.apps(appName)
+      app.releases().list (error, releases) ->
+        release = _.find releases, (release) ->
+          "v#{release.version}" ==  version
+
+        return msg.reply "Version #{version} not found for #{appName} :(" unless release
+
+        app.releases().rollback release: release.id, (error, release) ->
+          respondToUser(msg, error, "Success! v#{release.version} -> Rollback to #{version}")
 
   # App List
   robot.respond /(heroku list apps)\s?(.*)/i, (msg) ->

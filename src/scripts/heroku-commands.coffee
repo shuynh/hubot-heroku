@@ -10,7 +10,7 @@
 #
 # Commands:
 #   hubot heroku migrate <app-name> - runs migrations 
-#   hubot heroku rollback <app-name> to <version> - rolls back release 
+#   hubot heroku rollback <app-name> to <version> - rolls back release
 
 Heroku          = require('heroku-client')
 objectToMessage = require("../object-to-message")
@@ -52,10 +52,12 @@ module.exports = (robot) ->
 
   # Rollback
   robot.respond /heroku rollback (bedpost\-staging|bedpost\-production) to (\w+)$/i, (msg) ->
+    unless robot.auth.hasRole(msg.envelope.user,'admin')
+      msg.send 'Sorry! You do not have deploy permissions. Please contact ops.'
+      return
+    
     appName = msg.match[1]
     version = msg.match[2]
-
-    return unless auth(msg, appName)
 
     if version.match(/v\d+$/)
       msg.reply "Rolling back #{appName} to #{version}"
@@ -70,29 +72,9 @@ module.exports = (robot) ->
         app.releases().rollback release: release.id, (error, release) ->
           respondToUser(msg, error, "Success! v#{release.version} -> Rollback to #{version}")
 
-  # App List
-  robot.respond /(heroku list apps)\s?(.*)/i, (msg) ->
-    return unless auth(msg)
-
-    searchName = msg.match[2] if msg.match[2].length > 0
-
-    if searchName
-      msg.reply "Listing apps matching: #{searchName}"
-    else
-      msg.reply "Listing all apps available..."
-
-    heroku.apps().list (error, list) ->
-      list = list.filter (item) -> item.name.match(new RegExp(searchName, "i"))
-
-      result = if list.length > 0 then list.map((app) -> objectToMessage(app, "appShortInfo")).join("\n\n") else "No apps found"
-
-      respondToUser(msg, error, result)
-
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->
     appName = msg.match[1]
-
-    return unless auth(msg, appName)
 
     msg.reply "Getting releases for #{appName}"
 

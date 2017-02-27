@@ -29,7 +29,7 @@ module.exports = (robot) ->
       robotMessage.reply successMessage
 
   # Migration
-  robot.respond /heroku migrate\s+(bedpost\-staging|bedpost\-production)$/i, (msg) ->
+  robot.respond /heroku migrate\s+(bedpost\-staging|bedpost\-production|casper\-brenter|casper\-staging)$/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
       msg.send 'Sorry! You do not have deploy permissions. Please contact ops.'
       return

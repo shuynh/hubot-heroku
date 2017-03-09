@@ -30,7 +30,7 @@ module.exports = (robot) ->
       robotMessage.reply successMessage
 
   # Migration
-  robot.respond /heroku migrate\s+(bedpost\-staging|bedpost\-production|casper\-brenter|casper\-staging)$/i, (msg) ->
+  robot.respond /heroku migrate (.*)/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
@@ -52,7 +52,7 @@ module.exports = (robot) ->
         respondToUser(msg, error, "View logs at: #{session.logplex_url}")
 
   # Rollback
-  robot.respond /heroku rollback (bedpost\-staging|bedpost\-production) to (\w+)$/i, (msg) ->
+  robot.respond /heroku rollback (.*) (.*)$/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return

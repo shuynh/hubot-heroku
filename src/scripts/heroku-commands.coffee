@@ -11,6 +11,7 @@
 # Commands:
 #   hubot heroku migrate <app-name> - runs migrations 
 #   hubot heroku rollback <app-name> to <version> - rolls back release
+#   hubot heroku restart <app-name> - restarts the specified app
 
 Heroku          = require('heroku-client')
 objectToMessage = require("../object-to-message")
@@ -31,7 +32,7 @@ module.exports = (robot) ->
   # Migration
   robot.respond /heroku migrate\s+(bedpost\-staging|bedpost\-production|casper\-brenter|casper\-staging)$/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
-      msg.send 'Sorry! You do not have deploy permissions. Please contact ops.'
+      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
     
     appName = msg.match[1]
@@ -53,7 +54,7 @@ module.exports = (robot) ->
   # Rollback
   robot.respond /heroku rollback (bedpost\-staging|bedpost\-production) to (\w+)$/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
-      msg.send 'Sorry! You do not have deploy permissions. Please contact ops.'
+      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
     
     appName = msg.match[1]
@@ -71,6 +72,25 @@ module.exports = (robot) ->
 
         app.releases().rollback release: release.id, (error, release) ->
           respondToUser(msg, error, "Success! v#{release.version} -> Rollback to #{version}")
+  
+  # Restart
+  robot.respond /heroku restart ([\w-]+)\s?(\w+(?:\.\d+)?)?/i, (msg) ->
+    unless robot.auth.hasRole(msg.envelope.user,'admin')
+      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
+      return
+    
+    appName = msg.match[1]
+    dynoName = msg.match[2]
+    dynoNameText = if dynoName then ' '+dynoName else ''
+
+    msg.reply "Telling Heroku to restart #{appName}#{dynoNameText}"
+
+    unless dynoName
+      heroku.apps(appName).dynos().restartAll (error, app) ->
+        respondToUser(msg, error, "Heroku: Restarting #{appName}")
+    else
+      heroku.apps(appName).dynos(dynoName).restart (error, app) ->
+        respondToUser(msg, error, "Heroku: Restarting #{appName}#{dynoNameText}")
 
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->

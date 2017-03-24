@@ -92,6 +92,21 @@ module.exports = (robot) ->
       heroku.apps(appName).dynos(dynoName).restart (error, app) ->
         respondToUser(msg, error, "Heroku: Restarting #{appName}#{dynoNameText}")
 
+  # Bot Restart
+  robot.respond /die/i, (msg) ->
+    unless robot.auth.hasRole(msg.envelope.user,'admin')
+      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
+      return
+    
+    appName = "casper-hubot" 
+
+    unless dynoName
+      heroku.apps(appName).dynos().restartAll (error, app) ->
+        respondToUser(msg, error, "Goodbye cruel world.")
+    else
+      heroku.apps(appName).dynos(dynoName).restart (error, app) ->
+        respondToUser(msg, error, "Goodbye cruel world.")
+  
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->
     appName = msg.match[1]

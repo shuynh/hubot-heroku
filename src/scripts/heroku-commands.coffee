@@ -37,13 +37,11 @@ module.exports = (robot) ->
     
     appName = msg.match[1]
 
-    msg.reply "Running migrations on #{appName}"
-
     heroku.apps(appName).dynos().create
       command: "rake db:migrate"
       attach: false
     , (error, dyno) ->
-      respondToUser(msg, error, "Heroku: Running migrations for #{appName}")
+      respondToUser(msg, error, "Running migrations for #{appName}")
 
       heroku.apps(appName).logSessions().create
         dyno: dyno.name
@@ -95,8 +93,6 @@ module.exports = (robot) ->
   # Releases
   robot.respond /heroku releases (.*)$/i, (msg) ->
     appName = msg.match[1]
-
-    msg.reply "Getting releases for #{appName}"
 
     heroku.apps(appName).releases().list (error, releases) ->
       output = []

@@ -81,8 +81,6 @@ module.exports = (robot) ->
     dynoName = msg.match[2]
     dynoNameText = if dynoName then ' '+dynoName else ''
 
-    msg.reply "Telling Heroku to restart #{appName}#{dynoNameText}"
-
     unless dynoName
       heroku.apps(appName).dynos().restartAll (error, app) ->
         respondToUser(msg, error, "Heroku: Restarting #{appName}")

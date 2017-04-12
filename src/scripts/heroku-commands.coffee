@@ -50,7 +50,7 @@ module.exports = (robot) ->
         respondToUser(msg, error, "View logs at: #{session.logplex_url}")
 
   # Rollback
-  robot.respond /heroku rollback (.*) (.*)$/i, (msg) ->
+  robot.respond /heroku rollback (.*) to (.*)$/i, (msg) ->
     unless robot.auth.hasRole(msg.envelope.user,'admin')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return

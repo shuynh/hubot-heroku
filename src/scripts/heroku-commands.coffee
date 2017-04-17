@@ -31,7 +31,7 @@ module.exports = (robot) ->
 
   # Migration
   robot.respond /heroku migrate (.*)/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'admin')
+    unless robot.auth.hasRole(msg.envelope.user,'deployer')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
     
@@ -51,7 +51,7 @@ module.exports = (robot) ->
 
   # Rollback
   robot.respond /heroku rollback (.*) to (.*)$/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'admin')
+    unless robot.auth.hasRole(msg.envelope.user,'deployer')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
     
@@ -73,7 +73,7 @@ module.exports = (robot) ->
   
   # Restart
   robot.respond /heroku restart ([\w-]+)\s?(\w+(?:\.\d+)?)?/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'admin')
+    unless robot.auth.hasRole(msg.envelope.user,'deployer')
       msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
       return
     

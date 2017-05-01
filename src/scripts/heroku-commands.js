@@ -53,6 +53,31 @@ module.exports = function(robot) {
     }
   };
 
+  // Releases
+  robot.respond(/heroku releases (--app .+|.+$)/i, function(msg) {
+    let appName = msg.match[1].replace("--app", "").trim();
+
+    if (!auth(msg, appName)) { return; }
+
+    responder(msg).say(`Getting recent releases for ${appName}`);
+    heroku.get(`/apps/${appName}/releases`, { partial: true, headers: { "Range": "version ..; order=desc,max=10" } }).then(releases => {
+      let output = [];
+      if (releases) {
+        output.push(`Recent releases of ${appName}`);
+
+        for (let release of Array.from(releases.sort((a, b) => b.version - a.version).slice(0, 10))) {
+          let shortenedDescription = release.description;
+          if (release.description.length > 40) {
+            shortenedDescription = `${release.description.substring(0,20)}...`
+          }
+          output.push(`v${release.version} : ${shortenedDescription} by ${release.user.email} - ${moment(release.created_at).fromNow()}`);
+        }
+      }
+
+      responder(msg).say("```\n" + output.join("\n") + "```");
+    });
+  });
+
   // Rollback
   robot.respond(/heroku rollback (.*) to (.*)$/i, function(msg) {
     let appName = msg.match[1];

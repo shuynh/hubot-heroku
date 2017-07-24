@@ -19,7 +19,6 @@ objectToMessage = require("../object-to-message")
 heroku = new Heroku(token: process.env.HEROKU_API_KEY)
 _      = require('lodash')
 moment = require('moment')
-useAuth = (process.env.HUBOT_HEROKU_USE_AUTH or '').trim().toLowerCase() is 'true'
 
 module.exports = (robot) ->
 
@@ -31,9 +30,6 @@ module.exports = (robot) ->
 
   # Migration
   robot.respond /heroku migrate (.*)/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'deployer')
-      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
-      return
     
     appName = msg.match[1]
 
@@ -51,9 +47,6 @@ module.exports = (robot) ->
 
   # Rollback
   robot.respond /heroku rollback (.*) to (.*)$/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'deployer')
-      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
-      return
     
     appName = msg.match[1]
     version = msg.match[2]
@@ -73,9 +66,6 @@ module.exports = (robot) ->
   
   # Restart
   robot.respond /heroku restart ([\w-]+)\s?(\w+(?:\.\d+)?)?/i, (msg) ->
-    unless robot.auth.hasRole(msg.envelope.user,'deployer')
-      msg.send 'Sorry! You do not have the correct permissions. Please contact ops.'
-      return
     
     appName = msg.match[1]
     dynoName = msg.match[2]
